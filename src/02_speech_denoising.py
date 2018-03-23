@@ -453,9 +453,79 @@ for l in range(len(denoised_time_signal_list)):
 
 #############
 
-      
-   
-        
+directory_wav_clean_files='C:/SujoyRc/Personal/JUEE/First_work/datasets/speech_in_stationary_noise/clean'
+list_of_clean_wav_files=glob.glob(directory_wav_clean_files+'/*')
+clean_audio_list=[]
+for i in range(len(list_of_clean_wav_files)):
+    fileName=list_of_clean_wav_files[i]
+    myAudio = fileName
+    samplingFreq, mySound = wavfile.read(myAudio)
+    mySound = mySound / (2.**15)
+    clean_audio_list.append(mySound)
+    
+directory_wav_noisy_files='C:/SujoyRc/Personal/JUEE/First_work/datasets/speech_in_stationary_noise/m6dB'
+list_of_noisy_wav_files=glob.glob(directory_wav_noisy_files+'/*')
+noisy_audio_list=[]
+for i in range(len(list_of_noisy_wav_files)):
+    fileName=list_of_noisy_wav_files[i]
+    myAudio = fileName
+    samplingFreq, mySound = wavfile.read(myAudio)
+    mySound = mySound / (2.**15)
+    noisy_audio_list.append(mySound)
+    
+def get_mse(clean_audio_list,estimated_audio_list,list_of_clean_wav_files=list_of_clean_wav_files,list_of_stft_files=list_of_stft_files):
+    error=0
+    count=0
+    for k in range(len(list_of_clean_wav_files)):
+        file_name=list_of_clean_wav_files[k]
+        file_base_name=file_name.split('\\')[-1].split('.')[0]
+        stft_files_bases=[x.split('\\')[-1].split('.')[0] for x in list_of_stft_files]
+        stft_file_index=[p[0] for p in enumerate(stft_files_bases) if p[1]==file_base_name][0]
+        clean_file=clean_audio_list[k]
+        denoised_file=estimated_audio_list[stft_file_index]
+        if clean_file.shape[0]>denoised_file.shape[0]:
+            clean_file=clean_file[0:denoised_file.shape[0]]
+        else:
+            denoised_file=denoised_file[0:clean_file.shape[0]]
+        this_err=np.sum((clean_file-denoised_file)**2)
+        error=error+this_err
+        count=count+1
+    mse=error/count
+    return mse
+### Error in original noisy signal
+get_mse(clean_audio_list,noisy_audio_list)
+# 455.43
+### Error in denoised signal
+get_mse(clean_audio_list,[p[1] for p in denoised_time_signal_list])
+#  165.67
+def get_snr(clean_audio_list,estimated_audio_list,list_of_clean_wav_files=list_of_clean_wav_files,list_of_stft_files=list_of_stft_files):
+    sum_db=0
+    count=0
+    for k in range(len(list_of_clean_wav_files)):
+        file_name=list_of_clean_wav_files[k]
+        file_base_name=file_name.split('\\')[-1].split('.')[0]
+        stft_files_bases=[x.split('\\')[-1].split('.')[0] for x in list_of_stft_files]
+        stft_file_index=[p[0] for p in enumerate(stft_files_bases) if p[1]==file_base_name][0]
+        clean_file=clean_audio_list[k]
+        denoised_file=estimated_audio_list[stft_file_index]
+        if clean_file.shape[0]>denoised_file.shape[0]:
+            clean_file=clean_file[0:denoised_file.shape[0]]
+        else:
+            denoised_file=denoised_file[0:clean_file.shape[0]]
+        this_err=np.sum((clean_file-denoised_file)**2)
+        num_samples=clean_file.shape[0]
+        power_signal=sum([p**2 for p in clean_file])/num_samples
+        power_noise=sum([p**2 for p in denoised_file])/num_samples
+        db=10*np.log10(power_signal/power_noise)
+        sum_db=sum_db+db
+        count=count+1
+    snr_avg=sum_db/count
+    return snr_avg    
+#
+get_snr(clean_audio_list,noisy_audio_list)
+# -6.98 dB
+get_snr(clean_audio_list,[p[1] for p in denoised_time_signal_list])    
+# -3.2 dB        
         
         
     
